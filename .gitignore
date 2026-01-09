@@ -1,0 +1,11 @@
+# .gitignore
+
+# Python specifics
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# OS specific
+.DS_Store

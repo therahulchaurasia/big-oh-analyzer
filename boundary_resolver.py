@@ -40,15 +40,15 @@ class BoundaryResolver:
         
         return None
 
-    def is_bounded_condition(self, node):
+    def is_constant(self, node):
         if not node: return False
 
         # 1. Structural Unwrapping
         if node.type == "parenthesized_expression":
-            return self.is_bounded_condition(node.named_child(0))
+            return self.is_constant(node.named_child(0))
         
         if node.type == "unary_expression":
-            return self.is_bounded_condition(node.child_by_field_name("argument"))
+            return self.is_constant(node.child_by_field_name("argument"))
 
         # 2. Base Cases
         if node.type in self.literal_types:
@@ -91,13 +91,13 @@ class BoundaryResolver:
                         # If either is false, loop is O(1) [0 iterations]
                         if l_truth is False or r_truth is False: return True
                         # If left is true, complexity depends on right
-                        if l_truth is True: return self.is_bounded_condition(right)
-                        return self.is_bounded_condition(left) and self.is_bounded_condition(right)
+                        if l_truth is True: return self.is_constant(right)
+                        return self.is_constant(left) and self.is_constant(right)
 
                     if op == "||":
                         # If either is true, loop is O(inf) [Non-constant]
                         if l_truth is True or r_truth is True: return False
-                        return self.is_bounded_condition(left) and self.is_bounded_condition(right)
+                        return self.is_constant(left) and self.is_constant(right)
 
                 # Call Guard: Soundness first
                 if left.type == "call_expression" or right.type == "call_expression":
@@ -105,9 +105,9 @@ class BoundaryResolver:
 
                 # Math and Comparison
                 if op in ["+", "-", "*", "/"]:
-                    return self.is_bounded_condition(left) and self.is_bounded_condition(right)
+                    return self.is_constant(left) and self.is_constant(right)
                 if op in self.comparison_ops:
-                    return self.is_bounded_condition(left) or self.	condition(right)
+                    return self.is_constant(left) or self.is_constant(right)
 
          # 4. Ternary (IMPROVED: short-circuit on condition)
         if node.type == "conditional_expression":
@@ -117,16 +117,16 @@ class BoundaryResolver:
             
             cond_truth = self.get_truthiness(condition)
             if cond_truth is True:
-                return self.is_bounded_condition(consequence)
+                return self.is_constant(consequence)
             if cond_truth is False:
-                return self.is_bounded_condition(alternative)
+                return self.is_constant(alternative)
             
-            return self.is_bounded_condition(consequence) and self.is_bounded_condition(alternative)
+            return self.is_constant(consequence) and self.is_constant(alternative)
         
 				# Assignment expressions: check RHS
         if node.type == "assignment_expression":
             value = node.child_by_field_name("right")
-            return self.is_bounded_condition(value) if value else False
+            return self.is_constant(value) if value else False
         
 				        # Guard: optional chaining and nullish coalescing are non-constant
         if node.type in ["optional_chain", "nullish_coalescing_expression"]:
@@ -196,5 +196,5 @@ for src in test_cases:
     if cond and cond.type == "parenthesized_expression":
         cond = cond.named_child(0)
 
-    result = boundary_resolver.is_bounded_condition(cond)
+    result = boundary_resolver.is_constant(cond)
     print(f"{src:<25} | {result}")
